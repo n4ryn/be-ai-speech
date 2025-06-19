@@ -10,6 +10,10 @@ import {
   signupValidation,
 } from "../validations/auth.validation";
 
+// Utils
+import sendResponse from "../utils/response.util";
+import status from "../utils/status.json";
+
 const router = Router();
 
 // Signup
@@ -23,7 +27,9 @@ router.post(
       // Check if user already exists with same email
       const existingUser = await User.findOne({ email });
       if (existingUser) {
-        res.status(400).json({ message: "User already exists" });
+        sendResponse(res, status.HTTP_400_BAD_REQUEST, {
+          error: "User already exists",
+        });
         return;
       }
 
@@ -43,19 +49,31 @@ router.post(
       // Save user to database
       await newUser.save();
 
-      res
-        .cookie("token", token, {
-          expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 1 day
-          httpOnly: true,
-        })
-        .status(201)
-        .json({
-          message: "Signup successful",
-          data: { token, user: newUser },
-        });
+      const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      sendResponse(
+        res,
+        status.HTTP_201_CREATED,
+        { data: { token, user: newUser } },
+        [
+          { type: "token", value: token, config: { expires, httpOnly: true } },
+          {
+            type: "user",
+            value: JSON.stringify(newUser),
+            config: { expires, httpOnly: false },
+          },
+        ]
+      );
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Something went wrong" });
+      if (error instanceof Error) {
+        sendResponse(res, status.HTTP_500_INTERNAL_SERVER_ERROR, {
+          error: error.message,
+        });
+      } else {
+        sendResponse(res, status.HTTP_500_INTERNAL_SERVER_ERROR, {
+          error: "Internal server error",
+        });
+      }
     }
   }
 );
@@ -71,32 +89,48 @@ router.post(
       // Check if user exists
       const existingUser = await User.findOne({ email });
       if (!existingUser) {
-        res.status(404).json({ message: "User doesn't exists" });
+        sendResponse(res, status.HTTP_404_NOT_FOUND, {
+          error: "User doesn't exists",
+        });
         return;
       }
 
       // Validate password
       const isPasswordValid = await existingUser.validatePassword(password);
       if (!isPasswordValid) {
-        res.status(401).json({ message: "Invalid password" });
+        sendResponse(res, status.HTTP_401_UNAUTHORIZED, {
+          error: "Invalid password",
+        });
+        return;
       }
 
       // Generate JWT token
       const token = await existingUser.generateJWT();
+      const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-      res
-        .cookie("token", token, {
-          expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
-          httpOnly: true,
-        })
-        .status(200)
-        .send({
-          message: "Login successful",
-          data: { token, user: existingUser },
-        });
+      sendResponse(
+        res,
+        status.HTTP_200_OK,
+        { data: { token, user: existingUser } },
+        [
+          { type: "token", value: token, config: { expires, httpOnly: true } },
+          {
+            type: "user",
+            value: JSON.stringify(existingUser),
+            config: { expires, httpOnly: false },
+          },
+        ]
+      );
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Something went wrong" });
+      if (error instanceof Error) {
+        sendResponse(res, status.HTTP_500_INTERNAL_SERVER_ERROR, {
+          error: error.message,
+        });
+      } else {
+        sendResponse(res, status.HTTP_500_INTERNAL_SERVER_ERROR, {
+          error: "Internal server error",
+        });
+      }
     }
   }
 );
@@ -104,13 +138,22 @@ router.post(
 // Logout
 router.post("/logout", async (req: Request, res: Response): Promise<void> => {
   try {
-    res
-      .cookie("token", "", { expires: new Date(Date.now()) })
-      .status(200)
-      .json({ message: "Logout successful" });
+    const expires = new Date(Date.now());
+
+    sendResponse(res, status.HTTP_200_OK, {}, [
+      { type: "token", value: "", config: { expires, httpOnly: true } },
+      { type: "user", value: "", config: { expires, httpOnly: false } },
+    ]);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Something went wrong" });
+    if (error instanceof Error) {
+      sendResponse(res, status.HTTP_500_INTERNAL_SERVER_ERROR, {
+        error: error.message,
+      });
+    } else {
+      sendResponse(res, status.HTTP_500_INTERNAL_SERVER_ERROR, {
+        error: "Internal server error",
+      });
+    }
   }
 });
 

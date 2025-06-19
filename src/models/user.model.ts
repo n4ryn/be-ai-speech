@@ -34,6 +34,7 @@ const userSchema = new Schema<IUser, Model<UserDocument>, IUserMethods>(
   { timestamps: true }
 );
 
+// Methods
 userSchema.methods.generateJWT = async function () {
   const secret = process.env.JWT_SECRET;
 
@@ -50,6 +51,14 @@ userSchema.methods.validatePassword = async function (userPassword: string) {
 
   return isPasswordValid;
 };
+
+// Virtual
+userSchema.set("toJSON", {
+  transform(document, returnedObject) {
+    delete returnedObject.password;
+    return returnedObject;
+  },
+});
 
 const User = model("User", userSchema);
 
