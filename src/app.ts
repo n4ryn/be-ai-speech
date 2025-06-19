@@ -12,7 +12,12 @@ const port = 9000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.FE_BASE_URL,
+    credentials: true,
+  })
+);
 
 app.use("/", authRouter);
 
