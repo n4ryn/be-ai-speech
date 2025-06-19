@@ -101,4 +101,17 @@ router.post(
   }
 );
 
+// Logout
+router.post("/logout", async (req: Request, res: Response): Promise<void> => {
+  try {
+    res
+      .cookie("token", "", { expires: new Date(Date.now()) })
+      .status(200)
+      .json({ message: "Logout successful" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+});
+
 export default router;
