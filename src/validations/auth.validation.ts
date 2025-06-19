@@ -62,7 +62,6 @@ export const loginValidation = async (
           "Something went wrong",
       });
     } else {
-      console.log("first");
       res.status(500).json({ message: "Internal server error" });
     }
   }
